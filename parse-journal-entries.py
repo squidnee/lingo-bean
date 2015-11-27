@@ -5,6 +5,9 @@ import sys
 import collections
 import requests, csv
 from bs4 import BeautifulSoup, NavigableString
+from CorrectionHelper import CorrectionHelper
+import sqlite3 as sql
+import pandas as pd
 
 try:
     import timeoutsocket
@@ -50,25 +53,30 @@ def returnCorrectedSets(soup):
 			correctSet.add(correct)
 		return wrongSet, correctSet
 
-def makeCSV(csv_src):
-	#END_TOKEN = " __END__ENTRY__"
-	with open(new_src, 'r') as f, open(csv_src, 'a') as fcsv:
-		in_memory_file = f.read()
+def buildSQLDatabase(new_src, c):
+	with open(new_src, 'r') as f:
 		count = 0
 		for url in f.readlines():
 			count += 1
-			wr = csv.writer(fcsv, quoting=csv.QUOTE_ALL)
 			speaking, studying, entry, incorrect, correct = mineLearnerData(url)
-			data = [speaking, studying, incorrect, correct]
-			wr.writerow(data)
-			#f2.write(str(entry + END_TOKEN) + '\n')
+			data = [speaking, studying, entry, str(incorrect), str(correct)]
+			cols = ':'+', :'.join(data)
+			query = "INSERT INTO languageData (speaking, studying, entry, incorrect, correct) VALUES (%s)" % cols
+			c.execute(query)
 			print(count)
-	f.close(); fcsv.close()
+	conn.commit()
+	f.close()
+	conn.close()
+	print("Done!")
+
+conn = sql.connect('language-data.db')
+c = conn.cursor()
+c.execute('''CREATE TABLE IF NOT EXISTS languageData
+             (speaking text, studying text, entry text, incorrect text, correct text)''')
 
 data_src = 'data/lang-8-url-201012.txt'
 new_src = 'data/lang-8-url-cleaned.txt'
-entry_src = 'data/lang-8-entries.txt'
-csv_src = 'data/lang-8-data.csv'
+#entry_src = 'data/lang-8-entries.txt'
 
 #deleteDuplicateURLs(data_src, new_src)
-makeCSV(csv_src)
+buildSQLDatabase(new_src, c)
