@@ -59,7 +59,9 @@ def buildSQLDatabase(new_src, c):
 		for url in f.readlines():
 			count += 1
 			speaking, studying, entry, incorrect, correct = mineLearnerData(url)
-			data = [speaking, studying, entry, str(incorrect), str(correct)]
+			ch = CorrectionHelper(correct, speaking, studying)
+			cleanedCorrect = ch.extractAndCleanCorrections()
+			data = [speaking, studying, entry, str(incorrect), str(cleanedCorrect)]
 			cols = ':'+', :'.join(data)
 			query = "INSERT INTO languageData (speaking, studying, entry, incorrect, correct) VALUES (%s)" % cols
 			c.execute(query)
@@ -68,6 +70,15 @@ def buildSQLDatabase(new_src, c):
 	f.close()
 	conn.close()
 	print("Done!")
+
+def runSimpleTests(new_src):
+	f = open(new_src, 'r')
+	url = f.readlines()[0]
+	speaking, studying, entry, incorrect, correct = mineLearnerData(url)
+	ch = CorrectionHelper(correct, speaking, studying)
+	cleanedCorrect = ch.extractAndCleanCorrections()
+	for correction in cleanedCorrect:
+		print(correction)
 
 conn = sql.connect('language-data.db')
 c = conn.cursor()
@@ -79,4 +90,5 @@ new_src = 'data/lang-8-url-cleaned.txt'
 #entry_src = 'data/lang-8-entries.txt'
 
 #deleteDuplicateURLs(data_src, new_src)
-buildSQLDatabase(new_src, c)
+#buildSQLDatabase(new_src, c)
+runSimpleTests(new_src)

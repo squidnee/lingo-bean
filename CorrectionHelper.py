@@ -1,6 +1,6 @@
 import collections
 import numpy as np
-import csv
+import xml.etree.ElementTree as ET
 from utils import unicode_reader
 
 class CorrectionHelper:
@@ -9,17 +9,12 @@ class CorrectionHelper:
 		self.spoken = spoken
 		self.target = target
 
+		self.cleaned = list()
+		self.classifications = list()
+
+	# TODO : clean the sentences using the element tree, return that list.
+	# TODO(?) : store (and?) classify the errors hidden in brackets.
 	def extractAndCleanCorrections(self):
 		for index, value in enumerate(self.corrections):
-			for char in value:
-				if char is '<':
-					first = char
-				elif char is '>':
-					pass
+			print(ET.fromstring(value.encode('utf-8')).itertext())
 		return self.corrections
-
-if __name__ == '__main__':
-	data_src = 'data/lang-8-data.csv'
-	reader = unicode_reader(open(data_src))
-	for speaking, studying, incorrect, correct in reader:
-		print(speaking, studying, incorrect, correct)
