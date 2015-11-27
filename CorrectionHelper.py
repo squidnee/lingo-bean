@@ -1,7 +1,9 @@
 import collections
 import numpy as np
-import xml.etree.ElementTree as ET
+import bleach
 from utils import unicode_reader
+from copy import deepcopy
+#import xml.etree.ElementTree as ET
 
 class CorrectionHelper:
 	def __init__(self, corrections, spoken, target):
@@ -12,9 +14,21 @@ class CorrectionHelper:
 		self.cleaned = list()
 		self.classifications = list()
 
-	# TODO : clean the sentences using the element tree, return that list.
-	# TODO(?) : store (and?) classify the errors hidden in brackets.
+	# TODO: find out why <li> tags can't be removed
 	def extractAndCleanCorrections(self):
 		for index, value in enumerate(self.corrections):
-			print(ET.fromstring(value.encode('utf-8')).itertext())
-		return self.corrections
+			cleanedVal = bleach.clean(value, strip=True)
+			if cleanedVal.find('[') is not -1: 
+				cleanedVal = self.extractErrorClassification(cleanedVal)
+			#print(cleanedVal)
+			self.cleaned.append(cleanedVal)
+
+	def extractErrorClassification(self, cleanedVal):
+		bracket_open = cleanedVal.find('[')
+		bracket_closed = cleanedVal.find(']')
+		cleanedVal2 = deepcopy(cleanedVal)
+		commentError = cleanedVal2[bracket_open+1:bracket_closed]
+		commentErrorTuple = (commentError, 'Spoken: ' + str(self.spoken), 'Studying: ' + str(self.target))
+		self.classifications.append(commentErrorTuple)
+		new_str = str.replace(cleanedVal2, cleanedVal2[bracket_open-1:bracket_closed+1], ' ')
+		return new_str
