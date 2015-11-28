@@ -1,0 +1,6 @@
+bs4
+requests
+numpy
+pyplot
+nltk
+bleach-1.4.2

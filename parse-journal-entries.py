@@ -77,8 +77,7 @@ def runSimpleTests(new_src):
 	speaking, studying, entry, incorrect, correct = mineLearnerData(url)
 	ch = CorrectionHelper(correct, speaking, studying)
 	cleanedCorrect = ch.extractAndCleanCorrections()
-	for correction in cleanedCorrect:
-		print(correction)
+	#ch.runOneTest(cleanedCorrect)
 
 conn = sql.connect('language-data.db')
 c = conn.cursor()
