@@ -1,6 +1,16 @@
 bs4
 requests
-numpy
+numpy >= 1.7.1
 pyplot
 nltk
-bleach-1.4.2
+pandas
+bleach==1.4.2
+pylab==0.1.3 seaborn==0.6.0
+scipy >= 0.11
+pyyaml
+gensim
+Theano==0.7.0
+Keras==0.2.0
+sklearn
+cPickle=1.3.3
+textblob

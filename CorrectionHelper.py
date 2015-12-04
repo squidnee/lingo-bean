@@ -1,7 +1,7 @@
 import collections
 import numpy as np
 import bleach
-from utils import unicode_reader
+from utils import unicodeReader
 from copy import deepcopy
 #import xml.etree.ElementTree as ET
 
