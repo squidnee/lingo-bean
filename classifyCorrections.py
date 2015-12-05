@@ -1,7 +1,10 @@
+from __future__ import unicode_literals, print_function
 import time
 from wordvectors import *
 #from gensim.models import Word2Vec
-from textblob import TextBlob
+from textblob import TextBlob, Word
+from nltk import CFG
+from nltk.parse.generate import generate
 from sklearn.cluster import KMeans
 
 def runKMeans(vectors, K, model=None): #TODO
@@ -21,6 +24,9 @@ def runKMeans(vectors, K, model=None): #TODO
 			 words.append(classif_clusters.keys()[i])
 		print(words)
 
+def collectTranslationErrors():
+	pass
+
 def collectSpellingErrors(sentences):
 	spelling_errors_counter = 0
 	misspelled_words = []
@@ -30,13 +36,17 @@ def collectSpellingErrors(sentences):
 		if correction != sentence:
 			for word in sentence.split():
 				if word not in correction:
-				misspelled_words.append(word)
-				spelling_errors_counter += 1
+					misspelled_words.append(word)
+					spelling_errors_counter += 1
 	print("There were " + str(spelling_errors_counter) + " spelling errors in this entry.")
 	return misspelled_words
 
-if __name__ == '__main__':
-	model = None # TODO
-	clusters = 6
-	vectors = None
-	runKMeans(vectors, clusters, model)
+def confirmSpellcheck(tokens):
+	spellcheck = []
+	for token in tokens:
+		w = Word(token)
+		w.spellcheck()
+		spellcheck.append(w.spellcheck())
+	return spellcheck
+
+#if __name__ == '__main__':

@@ -7,6 +7,12 @@ import pickle
     Some of these functions were barely modified from the utils.py script
     in the original CS 221 'Sentiment' assignment.
     '''
+TRAIN_PATH = 'data/all-data.pickle'
+DEV_PATH = 'data/all-data-3.pickle'
+TEST_PATH = 'data/all-data-2.pickle'
+
+def filepaths():
+    return TRAIN_PATH, DEV_PATH, TEST_PATH
 
 def unicodeReader(data):
 	reader = csv.reader(data)
@@ -18,6 +24,39 @@ def unpickleFile(pickle_path):
     my_list_of_dicts = pickle.load(f)
     f.close()
     return my_list_of_dicts
+
+def retrieveDatasetsWithStats():
+    train_dicts = unpickleFile(TRAIN_PATH)
+    train_n = len(train_dicts.keys())
+    dev_dicts = unpickleFile(DEV_PATH)
+    dev_n = len(dev_dicts.keys())
+    test_dicts = unpickleFile(TEST_PATH)
+    test_n = len(test_dicts.keys())
+
+    N = train_n + dev_n + test_n
+    train_perc = (train_n / N) * 100
+    dev_perc = (dev_n / N) * 100
+    test_perc = (test_n / N) * 100
+    datasets = (train_dicts, dev_dicts, test_dicts)
+    testStats = [("Training N: " + str(train_n), "Training %: " + str(train_perc)), \
+                ("Development N: " + str(dev_n), "Development %: " + str(dev_perc)), \
+                ("Test N: " + str(test_n), "Test %: " + str(test_perc))]
+    return datasets, testStats
+
+def retrieveEntriesWithLabels(train_use=False, dev_use=False, test_use=True):
+    datasets, stats = retrieveDatasetsWithStats()
+    train, dev, test = datasets
+    vals = []
+    if train_use:
+        train_pairs = dict(map(lambda x: (x['Entry'], x['Speaking']), train.values()))
+        vals.append(train_pairs)
+    if dev_use:
+        dev_pairs = dict(map(lambda x: (x['Entry'], x['Speaking']), dev.values()))
+        vals.append(dev_pairs)
+    if test_use:
+        test_pairs = dict(map(lambda x: (x['Entry'], x['Speaking']), test.values()))
+        vals.append(test_pairs)
+    return vals
 
 def dotProduct(d1, d2):
 #     @param dict d1: a feature vector represented by a mapping from a feature (string) to a weight (float).

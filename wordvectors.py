@@ -1,11 +1,15 @@
+from __future__ import unicode_literals, print_function
 import numpy as np
 import pickle
-from utils import unpickleFile
 import gensim
 import nltk
+from utils import unpickleFile
 from textblob import TextBlob
 from nltkparsing import *
 from nltk.tokenize import MWETokenizer
+from sklearn.feature_extraction import FeatureHasher
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import TfidfTransformer, TfidfVectorizer
 
 entry_src = 'data/lang-8-entries.txt'
 entry_bin = 'data/lang-8-entries.bin'
@@ -17,21 +21,49 @@ NUM_BATCHES = 50
 
 data = unpickleFile(PICKLE_PATH)
 
+def testTranslation(entry):
+    sentences = parseSentenceFeatures(entry)
+    for sent in sentences:
+        blob = TextBlob(sent)
+        translate = blob.translate(to='en')
+
 def gatherWordList(data=data):
-    entry = data[982]['Entry']
+    entry = data[900]['Entry']
+    #print(entry)
+    testTranslation(entry)
     words = parseWordsFromEntry(entry)
     sentences = parseSentenceFeatures(entry)
-    for sentence in sentences:
-        b = TextBlob(sentence)
-        print(b.correct())
     words_sents = parseWordsFromSentences(sentences)
     model = gensim.models.Word2Vec(words)
     phrases = gensim.models.Phrases(words)
 
-gatherWordList(data)
+#gatherWordList(data)
+    
+def tokenFeatures(token, part_of_speech):
+    if token.isdigit():
+        yield "numeric"
+    else:
+        yield "token={}".format(token.lower())
+        yield "token,pos={},{}".format(token, part_of_speech)
+    if token[0].isupper():
+        yield "uppercase_initial"
+    if token.isupper():
+        yield "all_uppercase"
+    yield "pos={}".format(part_of_speech)
 
-def implementBagOfWords():
-	pass
+def bagOfWords(dataset):
+    ngram_r = (1,1)
+    vec = CountVectorizer(ngram_range=ngram_r, stop_words="english", max_features=1000)
+    counts = vec.fit_transform(dataset)
+    tfidf = TfidfTransformer(use_idf=True).fit(counts)
+    x = tfidf.transform(counts)
+    return x
+
+def taggedTokenMatrix(tagged_tokens):
+    raw = (tokenFeatures(token[0], token[1]) for token in tagged_tokens)
+    hasher = FeatureHasher(input_type='string')
+    sparse_matrix = hasher.transform(raw)
+    return sparse_matrix
 
 def findMeanWordVector(words, model, num_feats):
 	# Finds the average of all the word vectors.
