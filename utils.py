@@ -1,8 +1,6 @@
 from __future__ import print_function
-import csv
-import pickle
-#from gensim.models.word2vec import Word2Vec
-#import pattern.text
+import csv, random, pickle
+from collections import defaultdict
 '''
     Some of these functions were barely modified from the utils.py script
     in the original CS 221 'Sentiment' assignment.
@@ -10,6 +8,9 @@ import pickle
 TRAIN_PATH = 'data/all-data.pickle'
 DEV_PATH = 'data/all-data-3.pickle'
 TEST_PATH = 'data/all-data-2.pickle'
+
+def asciistrip(string):
+    return string.encode('utf-8').decode('ascii', 'ignore').strip()
 
 def filepaths():
     return TRAIN_PATH, DEV_PATH, TEST_PATH
@@ -58,6 +59,16 @@ def retrieveEntriesWithLabels(train_use=False, dev_use=False, test_use=True):
         vals.append(test_pairs)
     return vals
 
+def generateExamples(datadict, keylist=list(), numExamples=10000):
+    random.seed(42)
+    examples = defaultdict(int)
+    posExamples = random.sample(datadict, numExamples)
+    counter = 0
+    for i, ex in enumerate(posExamples):
+        tup = [(ex[key],) for key in keylist]
+        examples[i] = tup
+    return examples
+
 def dotProduct(d1, d2):
 #     @param dict d1: a feature vector represented by a mapping from a feature (string) to a weight (float).
 #     @param dict d2: same as d1
@@ -66,17 +77,6 @@ def dotProduct(d1, d2):
     	return dotProduct(d2, d1)
     else: 
     	return sum(d1.get(f, 0) * v for f, v in d2.items())
-
-def readTrainingExamples(path):
-#     Reads a set of training examples.
-#     Format of each line:
-#     <output label (language)> <input entry>
-    examples = []
-    for line in open(path):
-        y, x = line.split(' ', 1)
-        examples.append((x.strip(), str(y.encode('utf-8'))))
-    print('Read %d examples from %s' % (len(examples), path))
-    return examples
 
 def evaluateClassifier(data, classifier):
     error = 0
