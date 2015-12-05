@@ -21,6 +21,7 @@ TEST_PICKLE_PATH = "data/TestSet.pickle"
 
 urlfile = 'data/lang-8-url-cleaned-2.txt'
 
+''' These are the only languages that I am considering for my project. '''
 POSSIBLE_LANGUAGES = ['English', 'Spanish', 'French', 'Korean', 'Japanese', 'Mandarin']
 
 # Creates 'cleaned' text file with all duplicate URLs removed. Can comment out once file has been created.
@@ -32,6 +33,12 @@ POSSIBLE_LANGUAGES = ['English', 'Spanish', 'French', 'Korean', 'Japanese', 'Man
 # 				newfile.write(url)
 
 def mineLearnerData(url):
+	''' For the data to be valuable to my project, the HTML must reveal the following:
+			- language being studied
+			- language already being spoken
+			- journal entry of page
+		This function passes on the data for that URL if one of these is missing.
+		Corrections and incorrect sentences aren't necessary, so no passing needed there. '''
 	resp = requests.get(url)
 	raw_text = resp.text
 	soup = BeautifulSoup(raw_text, 'html.parser', from_encoding="gb18030")
@@ -56,13 +63,13 @@ def mineLearnerData(url):
 	try:
 		incorrect, correct = returnCorrectedSets(soup)
 	except IndexError:
-		incorrect = 'Null'; correct = 'Null'
-		safeToUse = False
-	if not safeToUse: continue
-	else return speaking, studying, entry, incorrect, correct
+		incorrect = 'NONE'; correct = 'NONE'
+	if not safeToUse: 
+		print("Not safe to use!")
+		pass
+	else: 
+		return speaking, studying, entry, incorrect, correct
 
-# Returns a set of incorrect sentences and their corrected forms, as deemed by native speakers.
-# TODO: pair incorrect sentences with corrected counterparts
 def returnCorrectedSets(soup):
 		wrongSet = set(); correctSet = set()
 		for incorrect in soup.select('div.correction_box ul.correction_field li.incorrect'):
@@ -71,12 +78,15 @@ def returnCorrectedSets(soup):
 			correctSet.add(correct)
 		return wrongSet, correctSet
 
-def createPickledDatasets(list_of_dicts, pickle_file=PICKLE_FILE):
+def createPickledDatasets(list_of_dicts, pickle_file):
+	''' Training set : 80 percent of total data.
+	 	Dev set : 10 percent of training data.
+	 	Test set : remaining 20 percent of total data. '''
 	output = open(pickle_file, 'wb')
 	pickle.dump(list_of_dicts, output)
 	output.close()
 
-def collectTrainData(urlfile, pickle_file=TRAIN_PICKLE_PATH):
+def collectTrainData(urlfile=urlfile, pickle_file=TRAIN_PICKLE_PATH):
 	# Going to have 60,000 total samples.
 	f = open(urlfile, 'r')
 	total_in_train = 0
@@ -95,7 +105,7 @@ def collectTrainData(urlfile, pickle_file=TRAIN_PICKLE_PATH):
 				learner_data = {'Speaking': speaking, 'Studying': studying, 'Entry': entry, 'Incorrect': incorrect, 'Corrections': corrections}
 				total_learner_data[index] = learner_data
 				createPickledDatasets(total_learner_data, pickle_file)
-				total_in_train = len(total_leaner_data.keys())
+				total_in_train = len(total_learner_data.keys())
 				print('Total found: ' + str(index), ' Number in set: ' + str(total_in_train))
 		except IOError as e:
 			num_unacceptable += 1
@@ -106,9 +116,10 @@ def collectTrainData(urlfile, pickle_file=TRAIN_PICKLE_PATH):
 		except:
 			num_unacceptable += 1
 			print("Unexpected error found: ", sys.exc_info()[0])
-			continue
+			raise
+	print("Done collecting training data!")
 
-def collectDevData(urlfile, pickle_file=DEV_PICKLE_PATH):
+def collectDevData(urlfile=urlfile, pickle_file=DEV_PICKLE_PATH):
 	# Going to have 20,000 total samples.
 	f = open(urlfile, 'r')
 	total_in_dev = 0
@@ -127,7 +138,7 @@ def collectDevData(urlfile, pickle_file=DEV_PICKLE_PATH):
 				learner_data = {'Speaking': speaking, 'Studying': studying, 'Entry': entry, 'Incorrect': incorrect, 'Corrections': corrections}
 				total_learner_data[index] = learner_data
 				createPickledDatasets(total_learner_data, pickle_file)
-				total_in_dev = len(total_leaner_data.keys())
+				total_in_dev = len(total_learner_data.keys())
 				print('Total found: ' + str(index), ' Number in set: ' + str(total_in_dev))
 		except IOError as e:
 			num_unacceptable += 1
@@ -139,8 +150,9 @@ def collectDevData(urlfile, pickle_file=DEV_PICKLE_PATH):
 			num_unacceptable += 1
 			print("Unexpected error found: ", sys.exc_info()[0])
 			raise
+	print("Done collecting development data!")
 
-def collectTestData(urlfile, pickle_file=TEST_PICKLE_PATH):
+def collectTestData(urlfile=urlfile, pickle_file=TEST_PICKLE_PATH):
 	# Going to have 20,000 total samples.
 	f = open(urlfile, 'r')
 	total_in_test = 0
@@ -159,7 +171,7 @@ def collectTestData(urlfile, pickle_file=TEST_PICKLE_PATH):
 				learner_data = {'Speaking': speaking, 'Studying': studying, 'Entry': entry, 'Incorrect': incorrect, 'Corrections': corrections}
 				total_learner_data[index] = learner_data
 				createPickledDatasets(total_learner_data, pickle_file)
-				total_in_test = len(total_leaner_data.keys())
+				total_in_test = len(total_learner_data.keys())
 				print('Total found: ' + str(index), ' Number in set: ' + str(total_in_test))
 		except IOError as e:
 			num_unacceptable += 1
@@ -171,3 +183,7 @@ def collectTestData(urlfile, pickle_file=TEST_PICKLE_PATH):
 			num_unacceptable += 1
 			print("Unexpected error found: ", sys.exc_info()[0])
 			raise
+	print("Done collecting testing data!")
+
+if __name__ == '__main__':
+	collectTrainData()
