@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 from DataCleaner import DataCleaner
 from utils import asciistrip as astrip
 from utils import unpickleFile
+from time import time
 
 try:
     import timeoutsocket
@@ -78,15 +79,16 @@ def returnCorrectedSets(soup):
 		return wrongSet, correctSet
 
 def createPickledDatasets(list_of_dicts, pickle_file):
-	''' Training set : 80 percent of total data.
-	 	Dev set : 10 percent of training data.
-	 	Test set : remaining 20 percent of total data. '''
+	''' Training set : 50 percent of all data. (32,000 samples)
+	 	Dev set : 25 percent of all data. (16,000 samples)
+	 	Test set : remaining 25 percent of all data. (16,000 samples) '''
 	output = open(pickle_file, 'wb')
 	pickle.dump(list_of_dicts, output)
 	output.close()
 
 def collectTrainData(urlfile=urlfile, pickle_file=TRAIN_PICKLE_PATH):
-	# Going to have 60,000 total samples.
+	# Going to have 32,000 total samples. UPDATE: Finished collecting.
+	t0 = time()
 	f = open(urlfile, 'r')
 	num_unacceptable = 0
 	total_learner_data = unpickleFile(TRAIN_PICKLE_PATH)
@@ -98,14 +100,18 @@ def collectTrainData(urlfile=urlfile, pickle_file=TRAIN_PICKLE_PATH):
 			dc = DataCleaner(correct, speaking, studying)
 			corrections = dc.cleanCorrections()
 			studying = dc.astrip(studying).split()[0]
-			if studying not in POSSIBLE_LANGUAGES: continue
-			if speaking not in POSSIBLE_LANGUAGES: continue
+			if studying not in POSSIBLE_LANGUAGES:
+				num_unacceptable += 1 
+				continue
+			if speaking not in POSSIBLE_LANGUAGES:
+				num_unacceptable += 1 
+				continue
 			else: 
 				learner_data = {'Speaking': speaking, 'Studying': studying, 'Entry': entry, 'Incorrect': incorrect, 'Corrections': corrections}
 				total_learner_data[index] = learner_data
 				createPickledDatasets(total_learner_data, pickle_file)
 				total_in_train = len(total_learner_data.keys())
-				print('Total found: ' + str(index), ' Number in set: ' + str(total_in_train))
+				print("Total found: %s. Total in set: %s. Time elapsed: %s." % (str(index), str(total_in_train), time()-t0))
 		except IOError as e:
 			num_unacceptable += 1
 			print("I/O error({0}): {1}".format(e.errno, e.strerror))
@@ -116,29 +122,35 @@ def collectTrainData(urlfile=urlfile, pickle_file=TRAIN_PICKLE_PATH):
 			num_unacceptable += 1
 			print("Unexpected error found: ", sys.exc_info()[0])
 			continue
-	print("Done collecting training data!")
+	print("Done collecting training data after %s seconds!" & time()-t0)
+	print("There were %s unacceptable URLs in this run" % num_unacceptable)
 
 def collectDevData(urlfile=urlfile, pickle_file=DEV_PICKLE_PATH):
-	# Going to have 20,000 total samples.
+	# Going to have 16,000 total samples. Currently collecting this.
+	t0 = time()
 	f = open(urlfile, 'r')
 	total_in_dev = 0
 	num_unacceptable = 0
 	total_learner_data = dict()
 	for index, url in enumerate(f.readlines()):
-		if 260000 <= index <= 200000: continue
+		if index <= 50000 or total_in_dev >= 16000: continue
 		try:
 			speaking, studying, entry, incorrect, correct = mineLearnerData(url)
 			dc = DataCleaner(correct, speaking, studying)
 			corrections = dc.cleanCorrections()
 			studying = dc.astrip(studying).split()[0]
-			if studying not in POSSIBLE_LANGUAGES: continue
-			if speaking not in POSSIBLE_LANGUAGES: continue
+			if studying not in POSSIBLE_LANGUAGES: 
+				num_unacceptable += 1
+				continue
+			if speaking not in POSSIBLE_LANGUAGES:
+				num_unacceptable += 1 
+				continue
 			else: 
 				learner_data = {'Speaking': speaking, 'Studying': studying, 'Entry': entry, 'Incorrect': incorrect, 'Corrections': corrections}
 				total_learner_data[index] = learner_data
 				createPickledDatasets(total_learner_data, pickle_file)
 				total_in_dev = len(total_learner_data.keys())
-				print('Total found: ' + str(index), ' Number in set: ' + str(total_in_dev))
+				print("Total found: %s. Total in set: %s. Time elapsed: %s." % (str(index), str(total_in_dev), time()-t0))
 		except IOError as e:
 			num_unacceptable += 1
 			print("I/O error({0}): {1}".format(e.errno, e.strerror))
@@ -148,30 +160,36 @@ def collectDevData(urlfile=urlfile, pickle_file=DEV_PICKLE_PATH):
 		except:
 			num_unacceptable += 1
 			print("Unexpected error found: ", sys.exc_info()[0])
-			raise
-	print("Done collecting development data!")
+			continue
+	print("Done collecting development data after %s seconds!" % time()-t0)
+	print("There were %s unacceptable URLs in this run" % num_unacceptable)
 
 def collectTestData(urlfile=urlfile, pickle_file=TEST_PICKLE_PATH):
-	# Going to have 20,000 total samples.
+	# Going to have 20,000 total samples. Not collecting this yet.
+	t0 = time()
 	f = open(urlfile, 'r')
 	total_in_test = 0
 	num_unacceptable = 0
 	total_learner_data = dict()
 	for index, url in enumerate(f.readlines()):
-		if 260000 <= index <= 200000: continue
+		if index <= 50000 or total_in_train >= 16000: continue #TODO!!!
 		try:
 			speaking, studying, entry, incorrect, correct = mineLearnerData(url)
 			dc = DataCleaner(correct, speaking, studying)
 			corrections = dc.cleanCorrections()
 			studying = dc.astrip(studying).split()[0]
-			if studying not in POSSIBLE_LANGUAGES: continue
-			if speaking not in POSSIBLE_LANGUAGES: continue
+			if studying not in POSSIBLE_LANGUAGES:
+				num_unacceptable += 1
+				continue
+			if speaking not in POSSIBLE_LANGUAGES:
+				num_unacceptable += 1
+				continue
 			else: 
 				learner_data = {'Speaking': speaking, 'Studying': studying, 'Entry': entry, 'Incorrect': incorrect, 'Corrections': corrections}
 				total_learner_data[index] = learner_data
 				createPickledDatasets(total_learner_data, pickle_file)
 				total_in_test = len(total_learner_data.keys())
-				print('Total found: ' + str(index), ' Number in set: ' + str(total_in_test))
+				print("Total found: %s. Total in set: %s. Time elapsed: %s." % (str(index), str(total_in_test), time()-t0))
 		except IOError as e:
 			num_unacceptable += 1
 			print("I/O error({0}): {1}".format(e.errno, e.strerror))
@@ -181,8 +199,9 @@ def collectTestData(urlfile=urlfile, pickle_file=TEST_PICKLE_PATH):
 		except:
 			num_unacceptable += 1
 			print("Unexpected error found: ", sys.exc_info()[0])
-			raise
-	print("Done collecting testing data!")
+			continue
+	print("Done collecting testing data after %s seconds!" % (time()-t0))
+	print("There were %s unacceptable URLs in this run" % num_unacceptable)
 
 if __name__ == '__main__':
-	collectTrainData()
+	collectDevData()

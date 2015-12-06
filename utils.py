@@ -7,7 +7,7 @@ from collections import defaultdict
     '''
 TRAIN_PATH = 'data/all-data.pickle'
 DEV_PATH = 'data/all-data-3.pickle'
-TEST_PATH = 'data/all-data-2.pickle'
+TEST_PATH = 'data/all-data-2.pickle' # TODO: UPDATE THESE DATA SETS
 
 def asciistrip(string):
     return string.encode('utf-8').decode('ascii', 'ignore').strip()
@@ -55,20 +55,6 @@ def retrieveDatasetsWithStats():
                 ("Development N: " + str(dev_n), "Development %: " + str(dev_perc)), \
                 ("Test N: " + str(test_n), "Test %: " + str(test_perc))]
     return datasets, testStats
-
-def retrieveEntriesWithLabels(train_use=False, dev_use=False, test_use=True):
-    train, dev, test = returnDatasets()
-    vals = []
-    if train_use:
-        train_pairs = dict(map(lambda x: (x['Entry'], x['Speaking']), train.values()))
-        vals.append(train_pairs)
-    if dev_use:
-        dev_pairs = dict(map(lambda x: (x['Entry'], x['Speaking']), dev.values()))
-        vals.append(dev_pairs)
-    if test_use:
-        test_pairs = dict(map(lambda x: (x['Entry'], x['Speaking']), test.values()))
-        vals.append(test_pairs)
-    return vals
 
 def makeLangPrefixMapping():
     lang_mapping = {'German': 'de', 'Spanish': 'es', 'French': 'fr', 'Japanese': 'ja', \

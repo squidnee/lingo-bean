@@ -12,6 +12,23 @@ class SetProcessing():
 	def __init__(self):
 		self.train, self.dev, self.test = returnDatasets()
 
+	def convertDataToList(self, dataset):
+		t0 = time()
+		alldata = []
+		alldata_counter = 0
+		for key, val in dataset.items():
+			data = []
+			alldata_counter += 1
+			data.append(val['Speaking'])
+			data.append(val['Studying'])
+			data.append(val['Entry'])
+			data.append(val['Incorrect'])
+			data.append(val['Corrections'])
+			alldata.append(data)
+		print("There were %s entries sorted" % alldata_counter)
+		print("Took %s seconds" % (time() - t0))
+		return alldata
+
 	def organizeDataByRegion(self, dataset):
 		# Partitions the language by region (Western or Eastern).
 		# Eastern languages: Japanese, Korean, Mandarin
@@ -75,7 +92,7 @@ class SetProcessing():
 		# Returns: English, French, Spanish lists (in that order)
 		t0 = time()
 		english = ['English']; french = ['French']; spanish = ['Spanish']
-		en_counter = 0; fr_counter = 0; sp_counter = 0
+		en_counter = 0; fr_counter = 0; es_counter = 0
 		for index, value in enumerate(western):
 			if value[0] in english:
 				en_counter += 1
@@ -84,11 +101,11 @@ class SetProcessing():
 				fr_counter += 1
 				french.append(western[index])
 			else:
-				sp_counter += 1
+				es_counter += 1
 				spanish.append(western[index])
 		print("There were %s learners that natively speak English" % en_counter)
 		print("There were %s learners that natively speak French" % fr_counter)
-		print("There were %s learners that natively speak Spanish" % sp_counter)
+		print("There were %s learners that natively speak Spanish" % es_counter)
 		english.remove('English')
 		french.remove('French')
 		spanish.remove('Spanish')
@@ -147,8 +164,8 @@ class SetProcessing():
 		return languages_learning
 
 	def returnEntryVersusTarget(self, datalist):
-		prefmap = makePrefixLangMapping()
 		t0 = time()
+		prefmap = makePrefixLangMapping()
 		not_orig_lang = 0
 		for data in datalist:
 			blob = TextBlob(data[2])
@@ -162,11 +179,19 @@ class SetProcessing():
 		print("Of %s entries, there are %s entries written in a different language than specified" % 
 			(len(datalist), not_orig_lang))
 
+	def returnEntriesWithSpoken(self, datalist):
+		t0 = time()
+		entries = []; langs = []
+		for data in datalist:
+			entries.append(data[2])
+			langs.append(data[0])
+		print("Took %s seconds" % (time() - t0))
+		return [entries, langs]
+
 if __name__ == '__main__':
 	sp = SetProcessing()
 	western_speaking, eastern_speaking = sp.organizeDataByRegion(sp.test)
 	japanese, korean, mandarin = sp.organizeEasternLanguages(eastern_speaking)
 	english, french, spanish = sp.organizeWesternLanguages(western_speaking)
 
-	jpcounts = sp.returnLanguageCounts(japanese)
-	print(jpcounts)
+	entries = sp.convertDataToList(sp.train)
