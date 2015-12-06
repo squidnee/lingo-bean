@@ -15,6 +15,9 @@ def asciistrip(string):
 def filepaths():
     return TRAIN_PATH, DEV_PATH, TEST_PATH
 
+def languages():
+    return ['English', 'Spanish', 'French', 'Korean', 'Japanese', 'Mandarin']
+
 def unicodeReader(data):
 	reader = csv.reader(data)
 	for row in reader:
@@ -26,12 +29,21 @@ def unpickleFile(pickle_path):
     f.close()
     return my_list_of_dicts
 
+def writeToTextfile(path, output):
+    with open(txtpath) as f:
+        f.write(output)
+    f.close()
+
+def returnDatasets():
+    train = unpickleFile(TRAIN_PATH)
+    dev = unpickleFile(DEV_PATH)
+    test = unpickleFile(TEST_PATH)
+    return train, dev, test
+
 def retrieveDatasetsWithStats():
-    train_dicts = unpickleFile(TRAIN_PATH)
+    train_dicts, dev_dicts, test_dicts = returnDatasets()
     train_n = len(train_dicts.keys())
-    dev_dicts = unpickleFile(DEV_PATH)
     dev_n = len(dev_dicts.keys())
-    test_dicts = unpickleFile(TEST_PATH)
     test_n = len(test_dicts.keys())
 
     N = train_n + dev_n + test_n
@@ -45,8 +57,7 @@ def retrieveDatasetsWithStats():
     return datasets, testStats
 
 def retrieveEntriesWithLabels(train_use=False, dev_use=False, test_use=True):
-    datasets, stats = retrieveDatasetsWithStats()
-    train, dev, test = datasets
+    train, dev, test = returnDatasets()
     vals = []
     if train_use:
         train_pairs = dict(map(lambda x: (x['Entry'], x['Speaking']), train.values()))
@@ -58,6 +69,16 @@ def retrieveEntriesWithLabels(train_use=False, dev_use=False, test_use=True):
         test_pairs = dict(map(lambda x: (x['Entry'], x['Speaking']), test.values()))
         vals.append(test_pairs)
     return vals
+
+def makeLangPrefixMapping():
+    lang_mapping = {'German': 'de', 'Spanish': 'es', 'French': 'fr', 'Japanese': 'ja', \
+     'English': 'en', 'Korean': 'ko', 'Mandarin': 'zh-CN'}
+    return lang_mapping
+
+def makePrefixLangMapping():
+    lang_mapping = makeLangPrefixMapping()
+    pref_mapping = dict(zip(lang_mapping.values(),lang_mapping.keys()))
+    return pref_mapping
 
 def generateExamples(datadict, keylist=list(), numExamples=10000):
     random.seed(42)

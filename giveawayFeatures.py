@@ -1,22 +1,13 @@
 from __future__ import unicode_literals, print_function
 from textblob import TextBlob
 from sklearn.feature_extraction import DictVectorizer
-
-def makeLangPrefixMapping():
-	global lang_mapping
-	lang_mapping = dict()
-	return lang_mapping
-
-def makePrefixLangMapping():
-	global pref_mapping
-	pref_mapping = dict()
-	return pref_mapping
+from utils import makePrefixLangMapping, makeLangPrefixMapping
 
 def featureExtractor(spoken, target, words, sentences, return_feats=False):
-	global pref_mapping
+	prefmap = makePrefixLangMapping()
 	feats = {}
 	prefixes = scanForMultipleLanguages(target, words)
-	for pref in pref_mapping:
+	for pref in prefmap:
 		feats["other_langs({0})".format(pref)] = 0
 	for prefix in prefixes:
 		feats["other_langs({0}".format(prefix)] = 1
@@ -26,15 +17,16 @@ def featureExtractor(spoken, target, words, sentences, return_feats=False):
 	pos_vectorized.toarray()
 	
 	if return_feats: return feats, vec
-	else return vec
+	else: return vec
 
 def scanForMultipleLanguages(target, words):
-	global lang_mapping
+	langmap = makeLangPrefixMapping()
 	langprefs = set()
 	for word in words:
 		blob = TextBlob(words)
-		if blob.detect_language() is not lang_mapping[target]:
-			langprefs.add(blob.detect_language())
+		detect = blob.detect_language()
+		if detect is not langmap[target]:
+			langprefs.add(detect)
 	return langprefs
 
 if __name__ == '__main__':

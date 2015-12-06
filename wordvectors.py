@@ -11,9 +11,6 @@ from sklearn.feature_extraction import FeatureHasher
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer, TfidfVectorizer
 
-entry_src = 'data/lang-8-entries.txt'
-entry_bin = 'data/lang-8-entries.bin'
-entry_clusters = 'data/lang-8-entries-clusters.txt'
 PICKLE_PATH = 'data/all-data.pickle'
 
 VEC_DIM = 150
@@ -52,10 +49,9 @@ def tokenFeatures(token, part_of_speech):
     yield "pos={}".format(part_of_speech)
 
 def bagOfWords(dataset):
-    ngram_r = (1,1)
-    vec = CountVectorizer(ngram_range=ngram_r, stop_words="english", max_features=1000)
+    vec = CountVectorizer(max_features=1000)
     counts = vec.fit_transform(dataset)
-    tfidf = TfidfTransformer(use_idf=True).fit(counts)
+    tfidf = TfidfTransformer(use_idf=False).fit(counts)
     x = tfidf.transform(counts)
     return x
 

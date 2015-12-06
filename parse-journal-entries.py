@@ -64,9 +64,8 @@ def mineLearnerData(url):
 		incorrect, correct = returnCorrectedSets(soup)
 	except IndexError:
 		incorrect = 'NONE'; correct = 'NONE'
-	if not safeToUse: 
+	if not safeToUse:
 		print("Not safe to use!")
-		pass
 	else: 
 		return speaking, studying, entry, incorrect, correct
 
@@ -89,11 +88,11 @@ def createPickledDatasets(list_of_dicts, pickle_file):
 def collectTrainData(urlfile=urlfile, pickle_file=TRAIN_PICKLE_PATH):
 	# Going to have 60,000 total samples.
 	f = open(urlfile, 'r')
-	total_in_train = 0
 	num_unacceptable = 0
-	total_learner_data = dict()
+	total_learner_data = unpickleFile(TRAIN_PICKLE_PATH)
+	total_in_train = len(total_learner_data.keys())
 	for index, url in enumerate(f.readlines()):
-		if index <= 5000 or total_in_train > 60000: continue
+		if index <= 42748 or total_in_train > 60000: continue
 		try:
 			speaking, studying, entry, incorrect, correct = mineLearnerData(url)
 			dc = DataCleaner(correct, speaking, studying)
@@ -116,7 +115,7 @@ def collectTrainData(urlfile=urlfile, pickle_file=TRAIN_PICKLE_PATH):
 		except:
 			num_unacceptable += 1
 			print("Unexpected error found: ", sys.exc_info()[0])
-			raise
+			continue
 	print("Done collecting training data!")
 
 def collectDevData(urlfile=urlfile, pickle_file=DEV_PICKLE_PATH):
