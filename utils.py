@@ -5,9 +5,9 @@ from collections import defaultdict
     Some of these functions were barely modified from the utils.py script
     in the original CS 221 'Sentiment' assignment.
     '''
-TRAIN_PATH = 'data/all-data.pickle'
-DEV_PATH = 'data/all-data-3.pickle'
-TEST_PATH = 'data/all-data-2.pickle' # TODO: UPDATE THESE DATA SETS
+TRAIN_PATH = 'data/TrainSet.pickle'
+DEV_PATH = 'data/DevSet.pickle'
+TEST_PATH = 'data/TestSet.pickle'
 
 def asciistrip(string):
     '''Strips the string of that pesky ascii code that rfind can't find.'''
@@ -23,9 +23,9 @@ def languages():
 
 def unicodeReader(data):
     '''Reads unicode within a CSV file.'''
-	reader = csv.reader(data)
-	for row in reader:
-		yield [cell.encode('utf-8') for cell in row]
+    reader = csv.reader(data)
+    for row in reader:
+        yield [cell.encode('utf-8') for cell in row]
 
 def unpickleFile(pickle_path):
     '''Unpickles a file.'''

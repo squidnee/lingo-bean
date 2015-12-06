@@ -104,7 +104,7 @@ def runTreePipeline(entries, langs):
 
 def runRFPipeline(entries, langs):
 	t0 = time()
-	sgd_pipeline = Pipeline([('vect', CountVectorizer(ngram_range=(1,1), max_features=n_features)),
+	rf_pipeline = Pipeline([('vect', CountVectorizer(ngram_range=(1,1), max_features=n_features)),
                       ('tfidf', TfidfTransformer(use_idf=True)),
                       ('clf', RandomForestClassifier(n_estimators=10))])
 
@@ -125,7 +125,7 @@ def runRFPipeline(entries, langs):
 	print(metrics.confusion_matrix(langs, predicted))
 	print("Took %s seconds." % (time()-t0))
 	print("n_samples: %d, n_features: %d" % X_train_tfidf.shape)
-	return sgd_pipeline
+	return rf_pipeline
 
 def tuneParameters(pipeline, entries, langs):
 	parameters = {'vect__ngram_range': [(1, 1), (1, 2), (2, 2)],
@@ -142,31 +142,33 @@ def trainOnTrainSet():
 	print("Training on train set...")
 	train_data = sp.convertDataToList(sp.train)
 	train_entries, train_langs = sp.returnEntriesWithSpoken(train_data)
-	#pipeline = runSGDPipeline(train_entries, train_langs)
+	pipeline = runSGDPipeline(train_entries, train_langs)
 	#pipeline = runSVCPipeline(train_entries, train_langs)
 	#pipeline = runTreePipeline(train_entries, train_langs)
-	pipeline = runRFPipeline(train_entries, train_langs)
+	#pipeline = runRFPipeline(train_entries, train_langs)
 	#tuneParameters(pipeline, train_entries, train_langs)
 
 def trainOnDevSet():
 	print("Training on dev set...")
 	dev_data = sp.convertDataToList(sp.dev)
 	dev_entries, dev_langs = sp.returnEntriesWithSpoken(dev_data)
-	#pipeline = runSGDPipeline(dev_entries, dev_langs)
+	pipeline = runSGDPipeline(dev_entries, dev_langs)
 	#pipeline = runSVCPipeline(dev_entries, dev_langs)
 	#pipeline = runTreePipeline(dev_entries, dev_langs)
-	pipeline = runRFPipeline(dev_entries, dev_langs)
+	#pipeline = runRFPipeline(dev_entries, dev_langs)
 	#tuneParameters(pipeline, dev_entries, dev_langs)
 
 def trainOnTestSet():
 	print("Training on test set...")
 	test_data = sp.convertDataToList(sp.test)
 	test_entries, test_langs = sp.returnEntriesWithSpoken(test_data)
-	#pipeline = runSGDPipeline(test_entries, test_langs)
+	pipeline = runSGDPipeline(test_entries, test_langs)
 	#pipeline = runSVCPipeline(test_entries, test_langs)
 	#pipeline = runTreePipeline(test_entries, test_langs)
-	pipeline = runRFPipeline(test_entries, test_langs)
+	#pipeline = runRFPipeline(test_entries, test_langs)
 	#tuneParameters(pipeline, test_entries, test_langs)
 
 if __name__ == '__main__':
-	trainOnTestSet()
+	trainOnTrainSet()
+	#trainOnDevSet()
+	#trainOnTestSet()
