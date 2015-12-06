@@ -122,18 +122,18 @@ def collectTrainData(urlfile=urlfile, pickle_file=TRAIN_PICKLE_PATH):
 			num_unacceptable += 1
 			print("Unexpected error found: ", sys.exc_info()[0])
 			continue
-	print("Done collecting training data after %s seconds!" & time()-t0)
+	print("Done collecting training data after %s seconds!" % (time()-t0))
 	print("There were %s unacceptable URLs in this run" % num_unacceptable)
 
 def collectDevData(urlfile=urlfile, pickle_file=DEV_PICKLE_PATH):
 	# Going to have 16,000 total samples. Currently collecting this.
 	t0 = time()
 	f = open(urlfile, 'r')
-	total_in_dev = 0
 	num_unacceptable = 0
-	total_learner_data = dict()
+	total_learner_data = unpickleFile(DEV_PICKLE_PATH)
+	total_in_dev = len(total_learner_data.keys())
 	for index, url in enumerate(f.readlines()):
-		if index <= 50000 or total_in_dev >= 16000: continue
+		if index <= 58166 or total_in_dev >= 16000: continue
 		try:
 			speaking, studying, entry, incorrect, correct = mineLearnerData(url)
 			dc = DataCleaner(correct, speaking, studying)
@@ -161,7 +161,7 @@ def collectDevData(urlfile=urlfile, pickle_file=DEV_PICKLE_PATH):
 			num_unacceptable += 1
 			print("Unexpected error found: ", sys.exc_info()[0])
 			continue
-	print("Done collecting development data after %s seconds!" % time()-t0)
+	print("Done collecting development data after %s seconds!" % (time()-t0))
 	print("There were %s unacceptable URLs in this run" % num_unacceptable)
 
 def collectTestData(urlfile=urlfile, pickle_file=TEST_PICKLE_PATH):
@@ -172,7 +172,7 @@ def collectTestData(urlfile=urlfile, pickle_file=TEST_PICKLE_PATH):
 	num_unacceptable = 0
 	total_learner_data = dict()
 	for index, url in enumerate(f.readlines()):
-		if index <= 50000 or total_in_train >= 16000: continue #TODO!!!
+		if index <= 100000 or total_in_test >= 16000: continue
 		try:
 			speaking, studying, entry, incorrect, correct = mineLearnerData(url)
 			dc = DataCleaner(correct, speaking, studying)
@@ -204,4 +204,5 @@ def collectTestData(urlfile=urlfile, pickle_file=TEST_PICKLE_PATH):
 	print("There were %s unacceptable URLs in this run" % num_unacceptable)
 
 if __name__ == '__main__':
-	collectDevData()
+	#collectDevData()
+	#collectTestData()
