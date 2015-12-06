@@ -1,6 +1,6 @@
 from __future__ import print_function
 from time import time
-from utils import returnDatasets, generateExamples, asciistrip, makePrefixLangMapping
+from utils import returnDatasets, asciistrip, makePrefixLangMapping
 from collections import Counter
 from textblob import TextBlob
 '''
@@ -13,6 +13,7 @@ class SetProcessing():
 		self.train, self.dev, self.test = returnDatasets()
 
 	def convertDataToList(self, dataset):
+		'''Converts a dictionary of dictionaries into a list of lists.'''
 		t0 = time()
 		alldata = []
 		alldata_counter = 0
@@ -30,9 +31,9 @@ class SetProcessing():
 		return alldata
 
 	def organizeDataByRegion(self, dataset):
-		# Partitions the language by region (Western or Eastern).
-		# Eastern languages: Japanese, Korean, Mandarin
-		# Western languages: English, French, Spanish
+		'''Partitions the language by region (Western or Eastern).
+		   Eastern languages: Japanese, Korean, Mandarin
+		   Western languages: English, French, Spanish'''
 		t0 = time()
 		western_all = []; western_opts = ['English', 'French', 'Spanish']
 		western_counter = 0
@@ -63,8 +64,8 @@ class SetProcessing():
 		return western_all, eastern_all
 
 	def organizeEasternLanguages(self, eastern):
-		# Organizes a list of data from Eastern language speakers into each language.
-		# Returns: Japanese, Korean, Mandarin lists (in that order)
+		'''Organizes a list of data from Eastern language speakers into each language.
+		   Returns: Japanese, Korean, Mandarin lists (in that order)'''
 		t0 = time()
 		japanese = ['Japanese']; korean = ['Korean']; mandarin = ['Mandarin']
 		jp_counter = 0; kr_counter = 0; zh_counter = 0
@@ -88,8 +89,8 @@ class SetProcessing():
 		return japanese, korean, mandarin
 
 	def organizeWesternLanguages(self, western):
-		# Organizes a list of data from Western language speakers into each language.
-		# Returns: English, French, Spanish lists (in that order)
+		'''Organizes a list of data from Western language speakers into each language.
+		   Returns: English, French, Spanish lists (in that order)'''
 		t0 = time()
 		english = ['English']; french = ['French']; spanish = ['Spanish']
 		en_counter = 0; fr_counter = 0; es_counter = 0
@@ -113,7 +114,7 @@ class SetProcessing():
 		return english, french, spanish
 
 	def buildCorrectionPairs(self, datalist):
-		# We organize the data by its incorrect pairs and its corrected counterparts.
+		'''Organizes the data by its incorrect pairs and its corrected counterparts.'''
 		t0 = time()
 		pairs = []
 		for data in datalist:
@@ -129,6 +130,8 @@ class SetProcessing():
 		return pairs
 
 	def buildSpeakingLearningPairs(self, datalist):
+		'''Pairs the spoken language of each element in the data list with the
+		   language being studied by that user.'''
 		t0 = time()
 		western = ['English', 'French', 'Spanish']
 		eastern = ['Japanese', 'Korean', 'Mandarin']
@@ -148,12 +151,15 @@ class SetProcessing():
 		return pairs
 
 	def returnStudyingSet(self, datalist):
+		'''Returns a set of all unique languages being studied by the users in this dataset.'''
 		t0 = time()
 		learning = set(asciistrip(data[1]) for data in datalist)
 		print("Took %s seconds" % (time() - t0))
 		return learning
 
 	def returnLanguageCounts(self, datalist):
+		'''Returns a counter that tallies up the languages being learned
+		   and the number of people learning those languages.'''
 		t0 = time()
 		languages_learning = Counter()
 		for data in datalist:
@@ -164,6 +170,11 @@ class SetProcessing():
 		return languages_learning
 
 	def returnEntryVersusTarget(self, datalist):
+		'''Some users write in a language that is different from their target language
+		   (i.e. if they are practicing a language that they didn't specify that they were
+		   learning, or if they are writing an entry in their native language asking someone
+		   to translate something for them). This function counts how many of these instances
+		   exist in the specified dataset.'''
 		t0 = time()
 		prefmap = makePrefixLangMapping()
 		not_orig_lang = 0
@@ -180,6 +191,8 @@ class SetProcessing():
 			(len(datalist), not_orig_lang))
 
 	def returnEntriesWithSpoken(self, datalist):
+		'''Returns pairs of entries coupled with the language being studied. This is
+		   what will be used for training.'''
 		t0 = time()
 		entries = []; langs = []
 		for data in datalist:

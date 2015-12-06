@@ -10,37 +10,46 @@ DEV_PATH = 'data/all-data-3.pickle'
 TEST_PATH = 'data/all-data-2.pickle' # TODO: UPDATE THESE DATA SETS
 
 def asciistrip(string):
+    '''Strips the string of that pesky ascii code that rfind can't find.'''
     return string.encode('utf-8').decode('ascii', 'ignore').strip()
 
 def filepaths():
+    '''Returns the file paths of each dataset for easy access.'''
     return TRAIN_PATH, DEV_PATH, TEST_PATH
 
 def languages():
+    '''Returns a list of the native languages being considered in this project.'''
     return ['English', 'Spanish', 'French', 'Korean', 'Japanese', 'Mandarin']
 
 def unicodeReader(data):
+    '''Reads unicode within a CSV file.'''
 	reader = csv.reader(data)
 	for row in reader:
 		yield [cell.encode('utf-8') for cell in row]
 
 def unpickleFile(pickle_path):
+    '''Unpickles a file.'''
     f = open(pickle_path, 'rb')
     my_list_of_dicts = pickle.load(f)
     f.close()
     return my_list_of_dicts
 
 def writeToTextfile(path, output):
+    '''Writes the specified output to a text file.'''
     with open(txtpath) as f:
         f.write(output)
     f.close()
 
 def returnDatasets():
+    '''Returns each dataset for easy access.'''
     train = unpickleFile(TRAIN_PATH)
     dev = unpickleFile(DEV_PATH)
     test = unpickleFile(TEST_PATH)
     return train, dev, test
 
 def retrieveDatasetsWithStats():
+    '''Returns each dataset coupled with how many entries it contains and what %
+       of all considered entries it contains.'''
     train_dicts, dev_dicts, test_dicts = returnDatasets()
     train_n = len(train_dicts.keys())
     dev_n = len(dev_dicts.keys())
@@ -57,35 +66,27 @@ def retrieveDatasetsWithStats():
     return datasets, testStats
 
 def makeLangPrefixMapping():
+    '''Returns a map of languages to their prefixes, as used by the Google API and many
+       language parsers.'''
     lang_mapping = {'German': 'de', 'Spanish': 'es', 'French': 'fr', 'Japanese': 'ja', \
      'English': 'en', 'Korean': 'ko', 'Mandarin': 'zh-CN'}
     return lang_mapping
 
 def makePrefixLangMapping():
+    '''Switches the values and the keys for the language-prefix map above.'''
     lang_mapping = makeLangPrefixMapping()
     pref_mapping = dict(zip(lang_mapping.values(),lang_mapping.keys()))
     return pref_mapping
 
-def generateExamples(datadict, keylist=list(), numExamples=10000):
-    random.seed(42)
-    examples = defaultdict(int)
-    posExamples = random.sample(datadict, numExamples)
-    counter = 0
-    for i, ex in enumerate(posExamples):
-        tup = [(ex[key],) for key in keylist]
-        examples[i] = tup
-    return examples
-
 def dotProduct(d1, d2):
-#     @param dict d1: a feature vector represented by a mapping from a feature (string) to a weight (float).
-#     @param dict d2: same as d1
-#     @return float: the dot product between d1 and d2
+    '''Computes the dot product on a vector. (To be used with SGD)'''
     if len(d1) < len(d2):
     	return dotProduct(d2, d1)
     else: 
     	return sum(d1.get(f, 0) * v for f, v in d2.items())
 
 def evaluateClassifier(data, classifier):
+    '''Evaluates a predictor/classifier.'''
     error = 0
     for x, y in data:
         if classifier(x) != y: error += 1

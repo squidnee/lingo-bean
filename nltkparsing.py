@@ -3,17 +3,16 @@ import collections, sys, random
 import nltk
 from nltk.tokenize import MWETokenizer
 
-'''Documentation for nltk can be found at 'www.nltk.org'.
+'''Further documentation for nltk can be found at 'www.nltk.org'.
 '''
 
 def parseSentenceFeatures(entry):
-    #start_token = "SENTENCE_START"
-    #end_token = "SENTENCE_END"
-    sentences = nltk.sent_tokenize(entry)
-    #sentences = ["%s %s %s" % (start_token, x, end_token) for x in sentences]
-    return sentences
+    '''Tokenizes an entry into a list of sentences.'''
+    return nltk.sent_tokenize(entry)
 
 def parseWordsFromEntry(entry, vocab_cap=10000):
+    '''Tokenizes an entry into a list of words.'''
+    '''Calculates their indeces relative to their frequencies.'''
     unknown = "UNKNOWN_WORD"
     tokenizer = MWETokenizer()
     words = entry.split()
@@ -26,6 +25,8 @@ def parseWordsFromEntry(entry, vocab_cap=10000):
     return word_to_index
 
 def parseWordsFromSentences(sentences, vocab_cap=10000):
+    '''Tokenizes a list of sentences into a list of words.'''
+    '''Calculates their indeces relative to their frequencies.'''
     unknown = "UNKNOWN_WORD"
     words = []
     for sent in sentences:
@@ -38,6 +39,7 @@ def parseWordsFromSentences(sentences, vocab_cap=10000):
     return word_to_index
 
 def tagWords(words, entities=False):
+    '''Tags the POS of each word.'''
     tagged_words = nltk.pos_tag(words)
     entities = nltk.chunk.ne_chunk(tagged_words)
     if entities is True:
@@ -46,13 +48,5 @@ def tagWords(words, entities=False):
         return tagged_words
 
 def findWordFrequencyDists(words, bool_contexts=False):
-    # Frequency distribution of each individual word.
-    word_freq = nltk.FreqDist(words)
-
-    # Frequency distribution mapping each context to the number
-    # of times that the context was used.
-    if bool_contexts is True:
-        comm_contexts = nltk.common_contexts(words)
-        return word_freq, comm_contexts
-    else:
-        return word_freq
+    '''Finds the frequency distribution of each word.'''
+    return nltk.FreqDist(words)
