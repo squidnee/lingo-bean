@@ -3,6 +3,7 @@ from time import time
 from utils import returnDatasets, asciistrip, makePrefixLangMapping
 from collections import Counter
 from textblob import TextBlob
+import random
 
 '''
     This is a class that can be used for easy dataset examination, clustering,
@@ -42,7 +43,42 @@ class SetProcessing():
 			dictlist.append(value)
 		return dictlist
 
-	def organizeDataByRegion(self, dataset):
+	def mergeLists(self, train, dev, test=None):
+		every = train
+		for d in dev:
+			every.append(d)
+		if test is not None:
+			for t in test:
+				every.append(t)
+		return every
+
+	def returnSplitDatasets(self, dataset, split_size, speaking=True):
+		t0 = time()
+		english = ['English']; french = ['French']; spanish = ['Spanish']
+		japanese = ['Japanese']; korean = ['Korean']; mandarin = ['Mandarin']
+		if speaking: query = 'Speaking'
+		else: query = 'Studying'
+		for key, val in dataset.items():
+			found = val[query]
+			if found in english: english.append(val)
+			elif found in french: french.append(val)
+			elif found in spanish: spanish.append(val)
+			elif found in japanese: japanese.append(val)
+			elif found in korean: korean.append(val)
+			elif found in mandarin: mandarin.append(val)
+		english.remove('English'); korean.remove('Korean')
+		french.remove('French'); mandarin.remove('Mandarin')
+		spanish.remove('Spanish'); japanese.remove('Japanese')
+		english = random.sample(english, split_size)
+		french = random.sample(french, split_size)
+		spanish = random.sample(spanish, split_size)
+		japanese = random.sample(japanese, split_size)
+		korean = random.sample(korean, split_size)
+		mandarin = random.sample(mandarin, split_size)
+		print("Took %s seconds" % (time()-t0))
+		return english, french, spanish, japanese, korean, mandarin
+
+	def organizeDataByRegion(self, dataset, speaking=True):
 		'''Partitions the language by region (Western or Eastern).
 		   Eastern languages: Japanese, Korean, Mandarin
 		   Western languages: English, French, Spanish'''
@@ -51,8 +87,10 @@ class SetProcessing():
 		western_counter = 0
 		eastern_all = []; eastern_opts = ['Japanese', 'Korean', 'Mandarin']
 		eastern_counter = 0
+		if speaking: query = 'Speaking'
+		else: query = 'Studying'
 		for key, val in dataset.items():
-			if val['Speaking'] in western_opts:
+			if val[query] in western_opts:
 				western = []
 				western_counter += 1
 				western.append(val['Speaking'])
@@ -61,7 +99,7 @@ class SetProcessing():
 				western.append(val['Incorrect'])
 				western.append(val['Corrections'])
 				western_all.append(western)
-			elif val['Speaking'] in eastern_opts:
+			elif val[query] in eastern_opts:
 				eastern = []
 				eastern_counter += 1
 				eastern.append(val['Speaking'])
@@ -75,20 +113,22 @@ class SetProcessing():
 		print("Took %s seconds" % (time() - t0))
 		return western_all, eastern_all
 
-	def organizeEasternLanguages(self, eastern):
+	def organizeEasternLanguages(self, eastern, speaking=True):
 		'''Organizes a list of data from Eastern language speakers into each language.
 		   Returns: Japanese, Korean, Mandarin lists (in that order)'''
 		t0 = time()
 		japanese = ['Japanese']; korean = ['Korean']; mandarin = ['Mandarin']
 		jp_counter = 0; kr_counter = 0; zh_counter = 0
+		if speaking: query = self.SPEAKING
+		else: query = self.STUDYING
 		for index, value in enumerate(eastern):
-			if value[self.SPEAKING] in japanese:
+			if value[query] in japanese:
 			 	jp_counter += 1
 			 	japanese.append(eastern[index])
-			elif value[self.SPEAKING] in korean:
+			elif value[query] in korean:
 			 	kr_counter += 1
 			 	korean.append(eastern[index])
-			elif value[self.SPEAKING] in mandarin:
+			elif value[query] in mandarin:
 			 	zh_counter += 1
 			 	mandarin.append(eastern[index])
 		print("There were %s learners that natively speak Japanese" % jp_counter)
@@ -100,20 +140,22 @@ class SetProcessing():
 		print("Took %s seconds" % (time() - t0))
 		return japanese, korean, mandarin
 
-	def organizeWesternLanguages(self, western):
+	def organizeWesternLanguages(self, western, speaking=True):
 		'''Organizes a list of data from Western language speakers into each language.
 		   Returns: English, French, Spanish lists (in that order)'''
 		t0 = time()
 		english = ['English']; french = ['French']; spanish = ['Spanish']
 		en_counter = 0; fr_counter = 0; es_counter = 0
+		if speaking: query = self.SPEAKING
+		else: query = self.STUDYING
 		for index, value in enumerate(western):
-			if value[self.SPEAKING] in english:
+			if value[query] in english:
 				en_counter += 1
 				english.append(western[index])
-			elif value[self.SPEAKING] in french:
+			elif value[query] in french:
 				fr_counter += 1
 				french.append(western[index])
-			elif value[self.SPEAKING] in spanish:
+			elif value[query] in spanish:
 				es_counter += 1
 				spanish.append(western[index])
 		print("There were %s learners that natively speak English" % en_counter)
@@ -135,7 +177,6 @@ class SetProcessing():
 				incorrect.append(i)
 			for j in data[self.CORRECTIONS]:
 				corrections.append(j)
-			print("There were %s incorrect with %s corrections" % (len(incorrect), len(corrections)))
 			pair = (incorrect, corrections)
 			pairs.append(pair)
 		print("Took %s seconds" % (time() - t0))
@@ -161,6 +202,12 @@ class SetProcessing():
 		 " learning an Eastern language, and %s are learning an unincluded language." %
 			 (len(pairs), pairs[0][self.SPEAKING], western_counter, eastern_counter, other))
 		return pairs
+
+	def returnEntries(self, datalist):
+		t0 = time()
+		entries = list(data[self.ENTRY] for data in datalist)
+		print("Took %s seconds to return entries" % (time()-t0))
+		return entries
 
 	def returnStudyingSet(self, datalist):
 		'''Returns a set of all unique languages being studied by the users in this dataset.'''
@@ -218,35 +265,52 @@ class SetProcessing():
 		t0 = time()
 		if western is True:
 			english = ['English']; french = ['French']; spanish = ['Spanish']
+			en_counter = 0; fr_counter = 0; es_counter = 0
 			for index, value in enumerate(datalist):
 				if value[self.STUDYING] in english:
 					english.append( [value[self.ENTRY], value[self.STUDYING]] )
+					en_counter += 1
 				elif value[self.STUDYING] in french:
 					french.append( [value[self.ENTRY], value[self.STUDYING]] )
+					fr_counter += 1
 				elif value[self.STUDYING] in spanish:
 					spanish.append( [value[self.ENTRY], value[self.STUDYING]] )
+					es_counter += 1
 			english.remove('English')
 			french.remove('French')
 			spanish.remove('Spanish')
 			print("Took %s seconds" % (time() - t0))
+			print("%s people studying English" % en_counter)
+			print("%s people studying French" % fr_counter)
+			print("%s people studying Spanish" % es_counter)
 			return english, french, spanish
 		else:
 			japanese = ['Japanese']; korean = ['Korean']; mandarin = ['Mandarin']
+			jp_counter = 0; kr_counter = 0; zh_counter = 0
 			for index, value in enumerate(datalist):
 				if value[self.STUDYING] in japanese:
 			 		japanese.append( [value[self.ENTRY], value[self.STUDYING]] )
+			 		jp_counter += 1
 				elif value[self.STUDYING] in korean:
 			 		korean.append( [value[self.ENTRY], value[self.STUDYING]] )
+			 		kr_counter += 1
 				elif value[self.STUDYING] in mandarin:
 			 		mandarin.append( [value[self.ENTRY], value[self.STUDYING]] )
+			 		zh_counter += 1
 			japanese.remove('Japanese')
 			korean.remove('Korean')
 			mandarin.remove('Mandarin')
+			print("%s people studying Japanese" % jp_counter)
+			print("%s people studying Korean" % kr_counter)
+			print("%s people studying Mandarin" % zh_counter)
 			print("Took %s seconds" % (time() - t0))
 			return japanese, korean, mandarin
 
 if __name__ == '__main__':
 	sp = SetProcessing()
-	#western_speaking, eastern_speaking = sp.organizeDataByRegion(sp.dev)
-	#japanese, korean, mandarin = sp.organizeEasternLanguages(eastern_speaking)
-	#english, french, spanish = sp.organizeWesternLanguages(western_speaking)
+	western, eastern = sp.organizeDataByRegion(sp.test, False)
+	sp.returnEntriesByRegionStudying(western, True)
+	sp.returnEntriesByRegionStudying(eastern, False)
+	#japanese, korean, mandarin = sp.organizeEasternLanguages(eastern, False)
+	#english, french, spanish = sp.organizeWesternLanguages(western, False)
+	#print(sp.returnEntryVersusTarget(english))

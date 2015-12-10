@@ -27,6 +27,12 @@ def unicodeReader(data):
     for row in reader:
         yield [cell.encode('utf-8') for cell in row]
 
+def isWestern(language):
+    return (language in ['English', 'French', 'Spanish'])
+
+def isEastern(language):
+    return (language in ['Japanese', 'Korean', 'Mandarin'])
+
 def unpickleFile(pickle_path):
     '''Unpickles a file.'''
     f = open(pickle_path, 'rb')
