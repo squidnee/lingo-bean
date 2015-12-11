@@ -1,19 +1,17 @@
 from __future__ import print_function
-import collections, bleach, json
+import collections, bleach, json, itertools
 import numpy as np
 
 from SetProcessing import SetProcessing
 from utils import unicodeReader, returnDatasets, makeLangPrefixMapping
-from copy import deepcopy
+from utils import unpickleFile as uf
 from textblob import TextBlob, Word
 from collections import Counter
 from time import time
 from nltkparsing import *
 from wordvectors import *
 from tinysegmenter import TinySegmenter
-from langdetect import detect, detect_langs
 from konlpy.tag import Mecab, Kkma
-from konlpy.utils import pprint
 from rakutenma import RakutenMA
 
 from nltk.tag.stanford import StanfordPOSTagger
@@ -31,6 +29,7 @@ from sklearn.metrics import metrics
 from sklearn.metrics import classification_report
 from sklearn.preprocessing import Normalizer
 from sklearn.decomposition import TruncatedSVD
+from sklearn.base import BaseEstimator, TransformerMixin
 
 class SyntacticStructExtraction:
 	def __init__(self):
@@ -40,6 +39,7 @@ class SyntacticStructExtraction:
 		self.japanese = ['Japanese']
 		self.korean = ['Korean']
 		self.mandarin = ['Mandarin']
+		self.lang_index = ['English', 'French', 'Spanish', 'Japanese', 'Korean','Mandarin']
 
 		self.english_freqs_path = 'data/english_freqs.pickle'
 		self.french_freqs_path = 'data/french_freqs.pickle'
@@ -47,6 +47,9 @@ class SyntacticStructExtraction:
 		self.mandarin_freqs_path = 'data/mandarin_freqs.pickle'
 		self.japanese_freqs_path = 'data/japanese_freqs.pickle'
 		self.korean_freqs_path = 'data/korean_freqs.pickle'
+
+	def fit(self, x, y=None):
+		return self
 
 	def averageSentenceLengthByLanguage(self, entries):
 		t0 = time()
@@ -58,6 +61,7 @@ class SyntacticStructExtraction:
 		return float(averaged) / total_entries
 
 	def averageSentenceLength(self, entry):
+		'''Finds the average sentence length in chars.'''
 		sentences = parseSentenceFeatures(entry)
 		total_sents = len(sentences)
 		all_words_total = 0
@@ -66,6 +70,7 @@ class SyntacticStructExtraction:
 		return float(all_words_total) / total_sents
 
 	def averageNumberOfTokens(self, entries, eastern=True):
+		'''Finds the average number of words in a sentence.'''
 		t0 = time()
 		entries_count = len(entries)
 		wordcount = 0
@@ -100,6 +105,7 @@ class SyntacticStructExtraction:
 		return spellcheck
 
 	def tagWordsInSentences(self, studying, entry):
+		'''Tags the part of speech for each word.'''
 		jar_path = 'stanford-postagger-full/stanford-postagger.jar'
 		if studying in self.english:
 			words = parseWordsFromEntry(entry)
@@ -108,8 +114,10 @@ class SyntacticStructExtraction:
 		elif studying in self.japanese or self.korean or self.mandarin:
 			#segmenter = TinySegmenter()
 			#words = segmenter.tokenize(entry)
-			mecab = Mecab()
-			tagged_words = mecab.pos(entry)
+			rm = RakutenMA()
+			tagged_words = rm.tokenize(entry)
+			#mecab = Mecab()
+			#tagged_words = mecab.pos(entry)
 			return tagged_words
 		else:
 			if studying in self.spanish:
@@ -122,14 +130,8 @@ class SyntacticStructExtraction:
 			tagged_words = postagger.tag(words)
 			return tagged_words
 
-	def findFrequencyOfPOS(self, tagged_words):
-		counts = Counter(tag for word, tag in tagged_words)
-		total = sum(counts.values())
-		dict((word, float(count)/total) for word, count in counts.items())
-
-	def findFrequencyOfSequence(self, studying, tagged_words, ngrams=2):
-		if studying in self.mandarin: pos = [tag for tag in tagged_words]
-		else: pos = [tag for word, tag in tagged_words]
+	def findFrequencyOfSequence(self, tagged_words, ngrams=2):
+		pos = [tag for word, tag in tagged_words]
 		ngramlist = ng(pos, ngrams)
 		freqs = Counter(n for n in ngramlist)
 		return freqs
@@ -139,28 +141,37 @@ class SyntacticStructExtraction:
 		freqs_counter = Counter()
 		for entry in entries:
 			tagged_words = self.tagWordsInSentences(studying, entry)
-			freqs = self.findFrequencyOfSequence(studying, tagged_words)
+			freqs = self.findFrequencyOfSequence(tagged_words)
 			freqs_counter = freqs_counter + freqs
 		print("Took %s seconds to make lang. counter" % (time()-t0))
-		print(freqs_counter)
-		return freqs_counter
+		#print(freqs_counter)
+		return {studying: freqs_counter}
 
-	def matchLangBySyntaxProb(self, counters, studying, entry):
-		freqs_counter = sp.makeLanguageCounter(studying, entry)
-		for freq in freqs_counter:
-			suma = float(sum(counts[a, b] for b in entries))
-			if suma != 0:
-				probs.update(((a, b), counts[a, b] / suma) for b in entries
-							if counts[a, b])
+	def makeCounter(self, counters):
+		counter_n = 0
+		holder = dict()
+		for counter_dict in counters:
+			lang, counter = counter_dict.popitem()
+			counter_n += len(counter.values())
+			holder[lang] = counter.most_common(100)
+		return holder, counter_n
 
-	def transform_token_count(self, pairs):
-		features = np.recarray(shape=len(pairs),),
-		dtype=[('spoken', object),('token_count', object)]
-		for i, pair in enumerate(pairs):
-			spoken, count = pair
-			features['spoken'][i] = spoken
-			features['token_count'][i] = count
-		return features
+	def matchLangBySyntaxProb(self, holder, counter_n, studying, entry):
+		observations = self.findFrequencyOfSequence(self.tagWordsInSentences(studying, entry))
+		length = len(observations)
+		observations = observations.most_common(int(length / 4))
+		problang = studying
+		curr_suma = 0
+		for x, y in holder.items():
+			for elem, num in y:
+				for tag in observations:
+					(first, second), count = tag
+					if first or second in y:
+						suma = float(count) / num
+						if suma > curr_suma: 
+							problang = x
+							curr_suma = suma
+		return entry, curr_suma, problang
 
 	def transform_sentence_length(self, pairs):
 		features = np.recarray(shape=(len(pairs),),
@@ -171,19 +182,12 @@ class SyntacticStructExtraction:
 			features['sentence_count'][i] = count
 		return features
 
-	def transform_pos_freqs(self, problang, entries):
-		features = np.recarray(shape=(len(entries),),
-								dtype=[('spoken', object),('pos_probability', object)])
-		for i, entry in enumerate(entries):
-			features['spoken'][i] = spoken
-			features['pos_probability'][i] = problang
-		return features
-
 class GiveawayFeatureExtraction:
 	def __init__(self):
 		self.clusters = 5
 
 	def scanForOtherLanguages(self, words, target):
+		'''Checks to see if other, non-specified languages are in the entry.'''
 		langmap = makeLangPrefixMapping()
 		langprefs = set()
 		for word in words:
@@ -193,7 +197,7 @@ class GiveawayFeatureExtraction:
 		return langprefs
 
 class SocialFeatureExtraction:
-	def __init__(self):
+	def __init__(BaseEstimator, TransformerMixin):
 		pass
 
 	def topicClustering(self, datalist, language_tag):
@@ -220,7 +224,11 @@ class CorrectionExtraction:
 	def __init__(self):
 		pass
 
+	def fit(self, x, y=None):
+		return self
+
 	def errorEditDistance(self, pairs):
+		'''Calculates the edit distance between two strings.'''
 		t0 = time()
 		total = 0; distances = 0
 		for pair in pairs:
@@ -231,13 +239,58 @@ class CorrectionExtraction:
 		print("Took %s seconds to calc. edit distance" % (time()-t0))
 		return float(distances) / total
 
-	def transform_edit_dist(self, pairs):
+class TokenFeatures(BaseEstimator, TransformerMixin):
+	def fit(self, x, y=None):
+		return self
+
+	def transform_token_count(self, pairs):
+		features = np.recarray(shape=len(pairs),),
+		dtype=[('spoken', object),('token_count', object)]
+		for i, pair in enumerate(pairs):
+			spoken, count = pair
+			features['spoken'][i] = spoken
+			features['token_count'][i] = count
+		return features
+
+class FeatureGetter(BaseEstimator, TransformerMixin):
+	def __init__(self):
+		self.item = item
+
+	def fit(self, x, y=None):
+		return self
+
+	def transform(self, item):
+		return item
+
+class POSFeatures(BaseEstimator, TransformerMixin):
+	def fit(self, x, y=None):
+		return self
+
+	def transform(self, pairs):
+		features = np.recarray(shape=(len(pairs),),
+								dtype=[('entry', object),('pos_probability', object),('problang', object)])
+		for i, pair in enumerate(pairs):
+			entry, prob, problang = pair
+			features['entry'][i] = entry
+			features['pos_probability'][i] = prob
+			features['problang'][i] = problang
+		return features
+
+class CorrectionFeatures(BaseEstimator, TransformerMixin):
+	def __init__(obj):
+		self.obj = obj
+
+	def fit(self, x, y=None):
+		return self
+
+	def transform(self, pairs):
 		features = np.recarray(shape=(len(pairs),),dtype=[('spoken', object),('edit_dist', object)])
 		for i, pair in enumerate(pairs):
 			spoken, count = pair
 			features['spoken'][i] = spoken
 			features['edit_dist'][i] = count
 		return features
+
 
 if __name__ == '__main__':
 	train, dev, test = returnDatasets()
@@ -249,7 +302,7 @@ if __name__ == '__main__':
 	ce = CorrectionExtraction()
 	sp = SetProcessing()
 
-	#train = sp.convertDataToList(train)
+	datalist = sp.convertDataToList(train)
 	#dev = sp.convertDataToList(dev)
 	#test = sp.convertDataToList(test)
 	#merged = sp.mergeLists(train, dev, test)
@@ -257,77 +310,101 @@ if __name__ == '__main__':
 	'''Return the individual sets by native language.'''
 	'''Takes approx. 1 second.'''
 	print("Collecting test sets...")
-	western_native, eastern_native = sp.organizeDataByRegion(test)
+	western_native, eastern_native = sp.organizeDataByRegion(train)
 	english_native, french_native, spanish_native = sp.organizeWesternLanguages(western_native)
 	japanese_native, korean_native, mandarin_native = sp.organizeEasternLanguages(eastern_native)
 
 	'''Return the individual sets by language being studied.'''
 	'''Takes approx. 1 second.'''
-	western_learning, eastern_learning = sp.organizeDataByRegion(test, False)
+	western_learning, eastern_learning = sp.organizeDataByRegion(train, False)
 	english_learning, french_learning, spanish_learning = sp.organizeWesternLanguages(western_learning, False)
 	japanese_learning, korean_learning, mandarin_learning = sp.organizeEasternLanguages(eastern_learning, False)
 
 	'''First feature: retrieve word frequencies. USE LEARNING SETS.'''
 	'''Can take anywhere from 40 seconds to 7 minutes depending on the language and the set.'''
-	print("Gathering feature number one...")
 	#english_entries = sp.returnEntries(english_learning) # English works!
 	#french_entries = sp.returnEntries(french_learning) # French works!
 	#spanish_entries = sp.returnEntries(spanish_learning) # Spanish works!
-	mandarin_entries = sp.returnEntries(mandarin_learning)
+	#mandarin_entries = sp.returnEntries(mandarin_learning) # Mandarin works!
 	#korean_entries = sp.returnEntries(korean_learning) # Korean works!
 	#japanese_entries = sp.returnEntries(japanese_learning)
-	freq_list = sse.makeLanguageCounter(mandarin_learning[0][sp.STUDYING], mandarin_entries)
+	print("Gathering feature number one...")
+	#freq_list = sse.makeLanguageCounter(japanese_learning[0][sp.STUDYING], japanese_entries)
 	#pickle.dump(freq_list, open(sse.spanish_freqs_path, 'wb'))
 
-	#pickle.dump(freq_list, open(sse.english_freqs_path 'wb'))
+	#pickle.dump(freq_list, open(sse.english_freqs_path, 'wb'))
 
 	#pickle.dump(freq_list, open(sse.french_freqs_path, 'wb'))
 
-	#sse.transform_pos_freqs(counter_list)
+	#pickle.dump(freq_list, open(sse.mandarin_freqs_path, 'wb'))
 
+	#pickle.dump(freq_list, open(sse.japanese_freqs_path, 'wb'))
+
+	#pickle.dump(freq_list, open(sse.korean_freqs_path, 'wb'))
+
+	counter_list = [uf(sse.english_freqs_path), uf(sse.french_freqs_path), uf(sse.spanish_freqs_path),
+	uf(sse.japanese_freqs_path), uf(sse.korean_freqs_path), uf(sse.mandarin_freqs_path)]
+
+	holder, counter_n = sse.makeCounter(counter_list)
+
+	lang_prob_path = 'data/langprobs_Train.pickle'
+	#problang_pairs = []
+	#finding_counter = 0
+	#print("Finding language probability pairs...")
+	#lang_prob_time = time()
+	#for data in datalist:
+	#	finding_counter += 1
+	#	print("Have checked %s entries at %s" % (finding_counter, (time()-lang_prob_time)))
+	#	entry, suma, problang = sse.matchLangBySyntaxProb(holder, counter_n, data[sp.STUDYING], data[sp.ENTRY])
+	#	if problang is not None:
+	#		problang_pairs.append( (entry, suma, problang) )
+	#		pickle.dump(problang_pairs, open(lang_prob_path, 'wb'))
+	
 	'''Second feature: error distance between words. USE NATIVE SETS.'''
 	'''Can take anywhere from 10 seconds to 9 minutes depending on the language and the set.'''
 	print("Gathering feature number two...")
-	#mandarin_pairs = sp.buildCorrectionPairs(mandarin_native)
-	#korean_pairs = sp.buildCorrectionPairs(korean_native)
-	#japanese_pairs = sp.buildCorrectionPairs(japanese_native)
-	#english_pairs = sp.buildCorrectionPairs(english_native)
-	#french_pairs = sp.buildCorrectionPairs(french_native)
-	#spanish_pairs = sp.buildCorrectionPairs(spanish_native)
+	mandarin_pairs = sp.buildCorrectionPairs(mandarin_native)
+	korean_pairs = sp.buildCorrectionPairs(korean_native)
+	japanese_pairs = sp.buildCorrectionPairs(japanese_native)
+	english_pairs = sp.buildCorrectionPairs(english_native)
+	french_pairs = sp.buildCorrectionPairs(french_native)
+	spanish_pairs = sp.buildCorrectionPairs(spanish_native)
 
-	#ce.errorEditDistance(mandarin_pairs)
-	#ce.errorEditDistance(korean_pairs)
-	#ce.errorEditDistance(japanese_pairs)
-	#ce.errorEditDistance(english_pairs)
-	#ce.errorEditDistance(french_pairs)
-	#ce.errorEditDistance(spanish_pairs)
+	english_dist= ce.errorEditDistance(english_pairs)
+	mandarin_dist = ce.errorEditDistance(mandarin_pairs)
+	korean_dist = ce.errorEditDistance(korean_pairs)
+	japanese_dist = ce.errorEditDistance(japanese_pairs)
+	french_dist = ce.errorEditDistance(french_pairs)
+	spanish_dist = ce.errorEditDistance(spanish_pairs)
 
-	#dist_list = [('English', english_dist), ('French', french_dist), ('Spanish', spanish_dist),
-	#('Japanese', japanese_dist), ('Korean', korean_dist), ('Mandarin', mandarin_dist)]
+	dist_list = [('English', english_dist), ('French', french_dist), ('Spanish', spanish_dist),
+	('Japanese', japanese_dist), ('Korean', korean_dist), ('Mandarin', mandarin_dist)]
 
 	#ce.transform_edit_dist(dist_list)
 
 	'''Third feature: average token length per sentence. USE NATIVE SETS.'''
 	'''Takes about 5 seconds to 3.5 minutes depending on the language.'''
 	print("Gathering feature number three...")
-	#english_entries = sp.returnEntries(english_native)
-	#french_entries = sp.returnEntries(french_native)
-	#spanish_entries = sp.returnEntries(spanish_native)
-	#mandarin_entries = sp.returnEntries(mandarin_native)
-	#korean_entries = sp.returnEntries(korean_native)
-	#japanese_entries = sp.returnEntries(japanese_native)
+	english_entries = sp.returnEntries(english_native)
+	french_entries = sp.returnEntries(french_native)
+	spanish_entries = sp.returnEntries(spanish_native)
+	mandarin_entries = sp.returnEntries(mandarin_native)
+	korean_entries = sp.returnEntries(korean_native)
+	japanese_entries = sp.returnEntries(japanese_native)
 
-	#mandarin_token = sse.averageNumberOfTokens(mandarin_entries)
-	#korean_token = sse.averageNumberOfTokens(korean_entries)
-	#japanese_token = sse.averageNumberOfTokens(japanese_entries)
-	#english_token = sse.averageNumberOfTokens(english_entries)
-	#french_token = sse.averageNumberOfTokens(french_entries)
-	#spanish_token = sse.averageNumberOfTokens(spanish_entries)
+	mandarin_token = sse.averageNumberOfTokens(mandarin_entries)
+	korean_token = sse.averageNumberOfTokens(korean_entries)
+	japanese_token = sse.averageNumberOfTokens(japanese_entries)
+	english_token = sse.averageNumberOfTokens(english_entries)
+	french_token = sse.averageNumberOfTokens(french_entries)
+	spanish_token = sse.averageNumberOfTokens(spanish_entries)
 
-	#tokens_list = [('English', english_token), ('French', french_token), ('Spanish', spanish_token),
-	#('Japanese', japanese_token), ('Korean', korean_token), ('Mandarin', mandarin_token)]
+	tokens_list = [('English', english_token), ('French', french_token), ('Spanish', spanish_token),
+	('Japanese', japanese_token), ('Korean', korean_token), ('Mandarin', mandarin_token)]
 
 	#sse.transform_token_count(tokens_list)
+	train_data = sp.convertDataToList(train)
+	train_entries, train_langs = sp.returnEntriesWithSpoken(train_data)
 
 	pipeline = Pipeline([
 		('union', FeatureUnion(
@@ -335,24 +412,27 @@ if __name__ == '__main__':
 
 			# Pipeline for feature #1
 			('feature_1', Pipeline([
-				('word_freqs', sse.transform_pos_freqs(counter_list)),
+				('selector', FeatureGetter(uf(lang_prob_path))),
+				('word_freqs', POSFeatures()),
 				('tfidf', TfidfVectorizer()),
 				])),
 			# Pipeline for feature 2
 			('feature_2', Pipeline([
-				('edit_dist', ce.transform_edit_dist(dist_list)),
+				('selector', FeatureGetter(dist_list)),
+				('edit_dist', CorrectionFeatures()),
 				('tfidf', TfidfVectorizer()),
 				])),
 			# Pipeline for feature 3
 			('feature_3', Pipeline([
-				('token_count', sse.transform_token_count(tokens_list)),
+				('selector', FeatureGetter(tokens_list)),
+				('token_count', TokenFeatures()),
 				('tfidf', TfidfVectorizer()),
 				])),
 			# Pipeline for bag of words feature
 			('bag_of_words', Pipeline([
+				('selector', FeatureGetter(train_entries)),
 				('vect', CountVectorizer(ngram_range=(1,1), max_features=500)),
 				('tfidf', TfidfTransformer(use_idf=True)),
-				('tree', DecisionTreeClassifier(max_features=n_features)),
 				])),
 			# Weights for the features
 			],
@@ -367,6 +447,8 @@ if __name__ == '__main__':
 		('clf', DecisionTreeClassifier(max_features=500)),
 	])
 
+pipeline_pickle_path = 'data/pipeline.pickle'
+pickle.dump(pipeline, open(pipeline_pickle_path, 'wb'))
 print("About to run the pipeline...")
 train_data = sp.convertDataToList(sp.train)
 test_data = sp.convertDataToList(sp.train)
